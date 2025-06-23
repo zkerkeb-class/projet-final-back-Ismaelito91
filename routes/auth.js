@@ -13,11 +13,35 @@ const router = express.Router();
 // Middleware de protection des routes
 const { protect } = require("../middleware/auth");
 
-router.post("/register", register);
-router.post("/login", login);
-router.get("/logout", logout);
+// Middleware de validation
+const validate = require("../middleware/validation");
+
+// Schémas de validation
+const {
+  registerSchema,
+  loginSchema,
+  updateDetailsSchema,
+  updatePasswordSchema,
+} = require("../validations/authValidation");
+
+// Routes publiques
+router.post("/register", validate(registerSchema), register);
+router.post("/login", validate(loginSchema), login);
+
+// Routes protégées
+router.get("/logout", protect, logout);
 router.get("/me", protect, getMe);
-router.put("/updatedetails", protect, updateDetails);
-router.put("/updatepassword", protect, updatePassword);
+router.put(
+  "/updatedetails",
+  protect,
+  validate(updateDetailsSchema),
+  updateDetails
+);
+router.put(
+  "/updatepassword",
+  protect,
+  validate(updatePasswordSchema),
+  updatePassword
+);
 
 module.exports = router;

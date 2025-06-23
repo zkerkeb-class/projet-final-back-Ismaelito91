@@ -10,9 +10,9 @@ exports.register = async (req, res) => {
     // Vérifier si l'utilisateur existe déjà
     const userExists = await User.findOne({ email });
     if (userExists) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: "Cet email est déjà utilisé",
+        message: "Un utilisateur avec cet email existe déjà",
       });
     }
 
@@ -24,13 +24,24 @@ exports.register = async (req, res) => {
       password,
     });
 
-    // Générer le token
-    sendTokenResponse(user, 201, res);
+    // Générer le token et renvoyer la réponse
+    sendTokenResponse(user, 201, res, "Inscription réussie");
   } catch (err) {
+    console.error("Erreur lors de l'inscription:", err);
+
+    // Gérer les erreurs de validation Mongoose
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: "Erreur de validation",
+        errors: messages,
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: "Erreur lors de l'inscription",
-      error: err.message,
+      message: "Erreur interne du serveur lors de l'inscription",
     });
   }
 };
@@ -42,20 +53,12 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Valider email et password
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "Veuillez fournir un email et un mot de passe",
-      });
-    }
-
     // Vérifier si l'utilisateur existe
     const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Identifiants invalides",
+        message: "Email ou mot de passe incorrect",
       });
     }
 
@@ -64,29 +67,37 @@ exports.login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: "Identifiants invalides",
+        message: "Email ou mot de passe incorrect",
       });
     }
 
-    // Générer le token
-    sendTokenResponse(user, 200, res);
+    // Générer le token et renvoyer la réponse
+    sendTokenResponse(user, 200, res, "Connexion réussie");
   } catch (err) {
+    console.error("Erreur lors de la connexion:", err);
     res.status(500).json({
       success: false,
-      message: "Erreur lors de la connexion",
-      error: err.message,
+      message: "Erreur interne du serveur lors de la connexion",
     });
   }
 };
 
-// @desc    Déconnecter l'utilisateur / effacer le cookie
+// @desc    Déconnecter l'utilisateur
 // @route   GET /api/auth/logout
 // @access  Private
 exports.logout = async (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Déconnexion réussie",
-  });
+  try {
+    res.status(200).json({
+      success: true,
+      message: "Déconnexion réussie",
+    });
+  } catch (err) {
+    console.error("Erreur lors de la déconnexion:", err);
+    res.status(500).json({
+      success: false,
+      message: "Erreur interne du serveur lors de la déconnexion",
+    });
+  }
 };
 
 // @desc    Obtenir l'utilisateur actuellement connecté
@@ -94,17 +105,25 @@ exports.logout = async (req, res) => {
 // @access  Private
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Utilisateur non trouvé",
+      });
+    }
 
     res.status(200).json({
       success: true,
+      message: "Profil récupéré avec succès",
       data: user,
     });
   } catch (err) {
+    console.error("Erreur lors de la récupération du profil:", err);
     res.status(500).json({
       success: false,
-      message: "Erreur lors de la récupération du profil",
-      error: err.message,
+      message: "Erreur interne du serveur lors de la récupération du profil",
     });
   }
 };
@@ -120,20 +139,53 @@ exports.updateDetails = async (req, res) => {
       email: req.body.email,
     };
 
+    // Vérifier si l'email est déjà utilisé par un autre utilisateur
+    if (req.body.email) {
+      const existingUser = await User.findOne({
+        email: req.body.email,
+        _id: { $ne: req.user.id },
+      });
+
+      if (existingUser) {
+        return res.status(409).json({
+          success: false,
+          message: "Cet email est déjà utilisé par un autre utilisateur",
+        });
+      }
+    }
+
     const user = await User.findByIdAndUpdate(req.user.id, fieldsToUpdate, {
       new: true,
       runValidators: true,
-    });
+    }).select("-password");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Utilisateur non trouvé",
+      });
+    }
 
     res.status(200).json({
       success: true,
+      message: "Profil mis à jour avec succès",
       data: user,
     });
   } catch (err) {
+    console.error("Erreur lors de la mise à jour du profil:", err);
+
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: "Erreur de validation",
+        errors: messages,
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: "Erreur lors de la mise à jour du profil",
-      error: err.message,
+      message: "Erreur interne du serveur lors de la mise à jour du profil",
     });
   }
 };
@@ -145,8 +197,16 @@ exports.updatePassword = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("+password");
 
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Utilisateur non trouvé",
+      });
+    }
+
     // Vérifier le mot de passe actuel
-    if (!(await user.matchPassword(req.body.currentPassword))) {
+    const isMatch = await user.matchPassword(req.body.currentPassword);
+    if (!isMatch) {
       return res.status(401).json({
         success: false,
         message: "Le mot de passe actuel est incorrect",
@@ -156,31 +216,57 @@ exports.updatePassword = async (req, res) => {
     user.password = req.body.newPassword;
     await user.save();
 
-    sendTokenResponse(user, 200, res);
+    sendTokenResponse(user, 200, res, "Mot de passe mis à jour avec succès");
   } catch (err) {
+    console.error("Erreur lors de la mise à jour du mot de passe:", err);
+
+    if (err.name === "ValidationError") {
+      const messages = Object.values(err.errors).map((val) => val.message);
+      return res.status(400).json({
+        success: false,
+        message: "Erreur de validation",
+        errors: messages,
+      });
+    }
+
     res.status(500).json({
       success: false,
-      message: "Erreur lors de la mise à jour du mot de passe",
-      error: err.message,
+      message:
+        "Erreur interne du serveur lors de la mise à jour du mot de passe",
     });
   }
 };
 
-// Fonction pour envoyer le token de réponse
-const sendTokenResponse = (user, statusCode, res) => {
-  // Créer le token
-  const token = user.getSignedJwtToken();
+// Fonction utilitaire pour envoyer le token de réponse
+const sendTokenResponse = (
+  user,
+  statusCode,
+  res,
+  message = "Opération réussie"
+) => {
+  try {
+    // Créer le token
+    const token = user.getSignedJwtToken();
 
-  res.status(statusCode).json({
-    success: true,
-    token,
-    user: {
-      id: user._id,
-      nom: user.nom,
-      prenom: user.prenom,
-      email: user.email,
-      role: user.role,
-      avatar: user.avatar,
-    },
-  });
+    res.status(statusCode).json({
+      success: true,
+      message,
+      token,
+      user: {
+        id: user._id,
+        nom: user.nom,
+        prenom: user.prenom,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        dateInscription: user.dateInscription,
+      },
+    });
+  } catch (err) {
+    console.error("Erreur lors de la génération du token:", err);
+    res.status(500).json({
+      success: false,
+      message: "Erreur lors de la génération du token d'authentification",
+    });
+  }
 };
