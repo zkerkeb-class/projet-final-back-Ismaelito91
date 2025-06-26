@@ -1,6 +1,62 @@
 # MonPetitChef API
 
+**Nom Prénom:** Ismael CEREZO
+
 API backend pour l'application de recettes de cuisine MonPetitChef.
+
+## Liste des fonctionnalités
+
+### ✅ Fonctionnalités principales
+
+- **Authentification complète** : Inscription, connexion, déconnexion avec JWT
+- **CRUD Recettes** : Création, lecture, mise à jour, suppression des recettes
+- **CRUD Commentaires** : Système de commentaires complet sur les recettes
+- **Gestion utilisateurs** : Profils, mise à jour des informations personnelles
+- **Upload d'images** : Images pour recettes et avatars utilisateurs (Multer)
+- **Système de notation** : Notes de 1 à 5 étoiles pour les recettes
+- **Favoris** : Ajout/suppression de recettes favorites
+- **Recherche et filtrage** : Par nom, ingrédients, catégories, difficulté
+- **Pagination** : Navigation efficace dans les listes de recettes
+- **Validation** : Validation complète des données avec Joi
+- **Gestion d'erreurs** : Middleware de gestion d'erreurs centralisé
+- **Sécurité** : Protection des routes, authentification JWT, hachage bcrypt
+
+### 🎯 Fonctionnalités avancées
+
+- **Recettes populaires** : Tri par note moyenne
+- **Recettes récentes** : Tri par date de création
+- **Calcul automatique** : Note moyenne des recettes
+- **Relations de données** : Population des références utilisateurs/recettes
+- **Middleware personnalisés** : Authentification, autorisation, upload
+- **Structure MVC** : Architecture propre et organisée
+
+## Liste des bonus
+
+### 🚀 Bonus implémentés
+
+- **Gestion des catégories** : Catégorisation flexible des recettes
+- **Système de tags** : Tags personnalisés pour les recettes
+- **Temps de préparation/cuisson** : Gestion détaillée des temps
+- **Portions** : Nombre de portions par recette
+- **Niveaux de difficulté** : Facile, Moyen, Difficile
+- **Profils utilisateurs** : Avatar, nom, prénom, email
+- **API RESTful complète** : Codes de statut HTTP appropriés
+- **Base de données optimisée** : Index et relations MongoDB
+- **Upload sécurisé** : Limitation de taille (5MB) et types de fichiers
+- **Validation robuste** : Messages d'erreur personnalisés en français
+- **CORS configuré** : Support pour applications front-end
+- **Logging** : Middleware de logging des requêtes
+- **Environnement configurable** : Variables d'environnement (.env)
+
+### 🔧 Bonus techniques
+
+- **Middleware de validation** : Validation centralisée avec Joi
+- **Gestion des erreurs async** : Try/catch sur toutes les routes
+- **Sécurité des uploads** : Filtrage des types MIME
+- **Nommage unique** : Fichiers uploadés avec timestamp
+- **Population automatique** : Relations utilisateur/recette/commentaire
+- **Recherche flexible** : Regex pour recherche insensible à la casse
+- **Structure modulaire** : Séparation claire des responsabilités
 
 ## Technologies utilisées
 
